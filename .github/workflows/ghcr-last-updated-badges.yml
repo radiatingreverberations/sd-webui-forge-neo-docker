@@ -114,7 +114,7 @@ jobs:
         if: steps.fetch.outputs.skip != 'true'
         id: existing
         env:
-          GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
+          GH_TOKEN: ${{ secrets.GIST_TOKEN }}
         run: |
           set -euo pipefail
           file="${BADGE_PREFIX}-${{ matrix.package }}-${{ steps.derive.outputs.tag }}.json"

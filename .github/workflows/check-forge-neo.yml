@@ -45,6 +45,7 @@ jobs:
           namespace="ghcr.io/${{ github.repository_owner }}"
           source_label="${{ inputs.image_label }}"
           extra_label="${{ inputs.extra_image_label }}"
+          expected_sha="${{ steps.forge_neo.outputs.sha }}"
 
           get_digest() {
             local image="$1"
@@ -57,19 +58,27 @@ jobs:
             fi
           }
 
-          image="${namespace}/sd-webui-forge-neo:${source_label}"
-          if image_json=$(skopeo inspect docker://"$image" 2>/dev/null); then
-            last=$(echo "$image_json" | jq -r '.Labels["forge-neo.sha"] // empty')
-          else
-            last=""
-          fi
-
+          last=""
           source_complete=true
           for prefix in "" "cpu-" "amd-"; do
             image="${namespace}/sd-webui-forge-neo:${prefix}${source_label}"
-            source_digest=$(get_digest "$image")
+            if image_json=$(skopeo inspect docker://"$image" 2>/dev/null); then
+              source_digest=$(echo "$image_json" | jq -r '.Digest // empty')
+              source_sha=$(echo "$image_json" | jq -r '.Labels["forge-neo.sha"] // empty')
+            else
+              source_digest=""
+              source_sha=""
+            fi
+
+            if [ -z "$prefix" ]; then
+              last="$source_sha"
+            fi
+
             if [ -z "$source_digest" ]; then
               echo "Missing source tag: $image"
+              source_complete=false
+            elif [ "$source_sha" != "$expected_sha" ]; then
+              echo "Mismatched Forge Neo SHA for source tag: $image ($source_sha != $expected_sha)"
               source_complete=false
             fi
           done

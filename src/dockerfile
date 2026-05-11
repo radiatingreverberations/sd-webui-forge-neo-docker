@@ -8,8 +8,10 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ffmpeg \
     git \
+    libcairo2-dev \
     libgl1 \
     libglib2.0-0 \
+    pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
 # Allow cache invalidation of the moving upstream branch even when the ref name is unchanged.
@@ -24,6 +26,8 @@ RUN mkdir -p /sd-webui-forge-neo && \
     rm -f /tmp/forge-neo.tar.gz
 
 # Install build-time application dependencies into the baked application venv.
+ARG DEPTH_ANYTHING_WHEEL=https://github.com/huchenlei/Depth-Anything/releases/download/v1.0.0/depth_anything-2024.1.22.0-py2.py3-none-any.whl
+ARG DEPTH_ANYTHING_V2_WHEEL=https://github.com/MackinationsAi/UDAV2-ControlNet/releases/download/v1.0.0/depth_anything_v2-2024.7.1.0-py2.py3-none-any.whl
 RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharing=locked \
     test -n "${OFFLOADR_VENV}" && \
     test -x "${OFFLOADR_VENV}/bin/python" && \
@@ -34,8 +38,14 @@ RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharin
         gradio_rangeslider==0.0.8 && \
     UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
         --python "${OFFLOADR_VENV}/bin/python" \
-        -r requirements.txt && \
-    "${OFFLOADR_VENV}/bin/python" -m compileall -q "${OFFLOADR_VENV}" && \
+        -r requirements.txt \
+        -r extensions-builtin/forge_legacy_preprocessors/requirements.txt && \
+    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
+        --python "${OFFLOADR_VENV}/bin/python" \
+        insightface \
+        "${DEPTH_ANYTHING_WHEEL}" \
+        "${DEPTH_ANYTHING_V2_WHEEL}" && \
+    "${OFFLOADR_VENV}/bin/python" -m compileall -q -x '(/test/|/tests/)' "${OFFLOADR_VENV}" && \
     chmod -R u=rwX,go=rX "${OFFLOADR_VENV}"
 
 # Forge Neo defaults to port 7860.
