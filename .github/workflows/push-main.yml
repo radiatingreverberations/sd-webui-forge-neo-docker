@@ -1,0 +1,51 @@
+name: Trigger builds on new commits to main
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  get-forge-neo-latest-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.fetch.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Get latest numeric tag
+        id: fetch
+        run: |
+          tag=$(bash .github/scripts/resolve-forge-neo-latest-tag.sh)
+          echo "Latest Forge Neo tag: $tag"
+          printf 'tag=%s\n' "$tag" >>"$GITHUB_OUTPUT"
+
+  build-forge-neo-branch:
+    concurrency:
+      group: build-neo
+      cancel-in-progress: true
+    uses: ./.github/workflows/build-docker.yml
+    with:
+      forge_neo_ref: "neo"
+      image_label: "neo"
+      push_images: true
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  build-forge-neo-latest-tag:
+    needs: [get-forge-neo-latest-tag]
+    concurrency:
+      group: build-latest
+      cancel-in-progress: true
+    uses: ./.github/workflows/build-docker.yml
+    with:
+      forge_neo_ref: "${{ needs.get-forge-neo-latest-tag.outputs.tag }}"
+      image_label: "latest"
+      extra_image_label: "${{ needs.get-forge-neo-latest-tag.outputs.tag }}"
+      push_images: true
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+

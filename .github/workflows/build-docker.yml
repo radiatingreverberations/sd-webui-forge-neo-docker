@@ -1,0 +1,53 @@
+name: Build and push Docker image
+
+on:
+  workflow_call:
+    inputs:
+      forge_neo_ref:
+        description: "Forge Neo branch or tag to build from"
+        required: true
+        type: string
+      image_label:
+        description: "Label to apply to the built image"
+        required: true
+        type: string
+      extra_image_label:
+        description: "Optional additional label to apply after pushing images"
+        required: false
+        type: string
+      bake_target:
+        description: "Docker Bake target to build"
+        required: false
+        type: string
+      push_images:
+        description: "Whether built images should be pushed to the registry"
+        required: true
+        type: boolean
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        base_flavor: [nvidia, cpu, amd]
+    uses: ./.github/workflows/build-flavor.yml
+    with:
+      forge_neo_ref: ${{ inputs.forge_neo_ref }}
+      image_label: ${{ inputs.image_label }}
+      base_flavor: ${{ matrix.base_flavor }}
+      targets: ${{ inputs.bake_target || 'default' }}
+      push_images: ${{ inputs.push_images }}
+    secrets: inherit
+
+  tag-extra-label:
+    needs: [build]
+    if: ${{ inputs.push_images && inputs.extra_image_label != '' && inputs.bake_target == '' }}
+    uses: ./.github/workflows/tag-images.yml
+    with:
+      source_label: ${{ inputs.image_label }}
+      target_label: ${{ inputs.extra_image_label }}
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+

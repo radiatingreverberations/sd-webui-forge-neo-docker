@@ -1,0 +1,18 @@
+name: Rebuild on Forge Neo branch changes
+
+on:
+  schedule:
+    - cron: "10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  check-forge-neo-branch:
+    uses: ./.github/workflows/check-forge-neo.yml
+    with:
+      forge_neo_ref: "neo"
+      image_label: "neo"
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+

@@ -1,0 +1,150 @@
+name: Rebuild on Forge Neo changes
+
+on:
+  workflow_call:
+    inputs:
+      forge_neo_ref:
+        description: "Forge Neo branch or tag to check"
+        required: true
+        type: string
+      image_label:
+        description: "Image label to compare against"
+        required: true
+        type: string
+      extra_image_label:
+        description: "Optional additional label to apply after pushing images"
+        required: false
+        type: string
+
+jobs:
+  check-forge-neo:
+    runs-on: ubuntu-latest
+    outputs:
+      changed: ${{ steps.compare.outputs.changed }}
+      forge_neo_sha: ${{ steps.forge_neo.outputs.sha }}
+      extra_tag_needed: ${{ steps.compare.outputs.extra_tag_needed }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install skopeo and jq
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get -qq install -y skopeo jq
+
+      - name: Get HEAD of Forge Neo ref
+        id: forge_neo
+        run: |
+          sha=$(bash .github/scripts/resolve-forge-neo-sha.sh "${{ inputs.forge_neo_ref }}")
+          echo "Forge Neo SHA: $sha"
+          printf 'sha=%s\n' "$sha" >>"$GITHUB_OUTPUT"
+
+      - name: Get forge-neo.sha label from latest built image
+        id: current
+        run: |
+          namespace="ghcr.io/${{ github.repository_owner }}"
+          source_label="${{ inputs.image_label }}"
+          extra_label="${{ inputs.extra_image_label }}"
+
+          get_digest() {
+            local image="$1"
+            local json
+
+            if json=$(skopeo inspect docker://"$image" 2>/dev/null); then
+              echo "$json" | jq -r '.Digest // empty'
+            else
+              echo ""
+            fi
+          }
+
+          image="${namespace}/sd-webui-forge-neo:${source_label}"
+          if image_json=$(skopeo inspect docker://"$image" 2>/dev/null); then
+            last=$(echo "$image_json" | jq -r '.Labels["forge-neo.sha"] // empty')
+          else
+            last=""
+          fi
+
+          source_complete=true
+          for prefix in "" "cpu-" "amd-"; do
+            image="${namespace}/sd-webui-forge-neo:${prefix}${source_label}"
+            source_digest=$(get_digest "$image")
+            if [ -z "$source_digest" ]; then
+              echo "Missing source tag: $image"
+              source_complete=false
+            fi
+          done
+
+          extra_complete=false
+          if [ -n "$extra_label" ]; then
+            extra_complete=true
+            for prefix in "" "cpu-" "amd-"; do
+              source_image="${namespace}/sd-webui-forge-neo:${prefix}${source_label}"
+              source_digest=$(get_digest "$source_image")
+              if [ -z "$source_digest" ]; then
+                continue
+              fi
+
+              extra_image="${namespace}/sd-webui-forge-neo:${prefix}${extra_label}"
+              extra_digest=$(get_digest "$extra_image")
+              if [ -z "$extra_digest" ]; then
+                echo "Missing extra tag: $extra_image"
+                extra_complete=false
+              elif [ "$extra_digest" != "$source_digest" ]; then
+                echo "Mismatched extra tag: $extra_image"
+                extra_complete=false
+              fi
+            done
+          fi
+
+          echo "Current image SHA: $last"
+          echo "sha=$last" >>"$GITHUB_OUTPUT"
+          echo "source_complete=$source_complete" >>"$GITHUB_OUTPUT"
+          echo "extra_complete=$extra_complete" >>"$GITHUB_OUTPUT"
+
+      - name: Decide whether to rebuild
+        id: compare
+        run: |
+          if [ "${{ steps.current.outputs.source_complete }}" != "true" ] || \
+             [ -z "${{ steps.current.outputs.sha }}" ] || \
+             [ "${{ steps.forge_neo.outputs.sha }}" != "${{ steps.current.outputs.sha }}" ]; then
+            echo "changed=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >>"$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "${{ inputs.extra_image_label }}" ] && \
+             [ "${{ steps.current.outputs.source_complete }}" = "true" ] && \
+             [ "${{ steps.current.outputs.extra_complete }}" != "true" ]; then
+            echo "extra_tag_needed=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "extra_tag_needed=false" >>"$GITHUB_OUTPUT"
+          fi
+
+  build-docker:
+    needs: check-forge-neo
+    if: needs.check-forge-neo.outputs.changed == 'true'
+    concurrency:
+      group: build-${{ inputs.image_label }}
+      cancel-in-progress: false
+    uses: ./.github/workflows/build-docker.yml
+    with:
+      forge_neo_ref: "${{ inputs.forge_neo_ref }}"
+      image_label: "${{ inputs.image_label }}"
+      extra_image_label: "${{ inputs.extra_image_label }}"
+      push_images: true
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit
+
+  tag-extra-label:
+    needs: check-forge-neo
+    if: needs.check-forge-neo.outputs.changed != 'true' && needs.check-forge-neo.outputs.extra_tag_needed == 'true'
+    uses: ./.github/workflows/tag-images.yml
+    with:
+      source_label: "${{ inputs.image_label }}"
+      target_label: "${{ inputs.extra_image_label }}"
+    permissions:
+      contents: read
+      packages: write
+    secrets: inherit

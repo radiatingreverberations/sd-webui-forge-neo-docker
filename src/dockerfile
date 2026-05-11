@@ -1,0 +1,54 @@
+ARG BASE_IMAGE=ghcr.io/offloadr/base/cpu-core:py3.12-torch2.10.0-cpu
+FROM ${BASE_IMAGE}
+
+WORKDIR /sd-webui-forge-neo
+
+# Runtime tools and shared libraries used by Forge Neo, OpenCV, and media export.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    git \
+    libgl1 \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Allow cache invalidation of the moving upstream branch even when the ref name is unchanged.
+ARG REFRESH_FORGE_NEO=0
+RUN echo "${REFRESH_FORGE_NEO}" >/tmp/forge-neo-refresh
+
+# Install Forge Neo.
+ARG FORGE_NEO_VERSION=neo
+ADD https://github.com/Haoming02/sd-webui-forge-classic/archive/${FORGE_NEO_VERSION}.tar.gz /tmp/forge-neo.tar.gz
+RUN mkdir -p /sd-webui-forge-neo && \
+    tar -xzf /tmp/forge-neo.tar.gz -C /sd-webui-forge-neo --strip-components=1 && \
+    rm -f /tmp/forge-neo.tar.gz
+
+# Install build-time application dependencies into the baked application venv.
+RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharing=locked \
+    test -n "${OFFLOADR_VENV}" && \
+    test -x "${OFFLOADR_VENV}/bin/python" && \
+    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
+        --python "${OFFLOADR_VENV}/bin/python" \
+        packaging==26.0 \
+        gradio==4.40.0 \
+        gradio_rangeslider==0.0.8 && \
+    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
+        --python "${OFFLOADR_VENV}/bin/python" \
+        -r requirements.txt && \
+    "${OFFLOADR_VENV}/bin/python" -m compileall -q "${OFFLOADR_VENV}" && \
+    chmod -R u=rwX,go=rX "${OFFLOADR_VENV}"
+
+# Forge Neo defaults to port 7860.
+EXPOSE 7860
+
+ENV PYTHONUNBUFFERED=1
+ENV GRADIO_ANALYTICS_ENABLED=False
+ENV XFORMERS_IGNORE_FLASH_VERSION_CHECK=1
+
+COPY runtime-venv.sh runtime-venv.sh
+RUN sed -i 's/\r$//' runtime-venv.sh && chmod +x runtime-venv.sh
+
+COPY entrypoint.sh entrypoint.sh
+RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
+
+ENTRYPOINT ["./entrypoint.sh"]
