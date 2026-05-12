@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ghcr.io/offloadr/base/cpu-core:py3.12-torch2.10.0-cpu
+ARG BASE_IMAGE=ghcr.io/offloadr/base/cpu-core:py3.13-torch2.10.0-cpu
 FROM ${BASE_IMAGE}
 
 WORKDIR /sd-webui-forge-neo

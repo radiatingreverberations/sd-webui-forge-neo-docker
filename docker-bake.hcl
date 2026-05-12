@@ -11,15 +11,15 @@ variable "REFRESH_FORGE_NEO" {
 }
 
 variable "CPU_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/cpu-core:py3.12-torch2.10.0-cpu"
+    default = "ghcr.io/offloadr/base/cpu-core:py3.13-torch2.10.0-cpu"
 }
 
 variable "AMD_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/amd-core:py3.12-torch2.10.0-rocm7.1.1"
+    default = "ghcr.io/offloadr/base/amd-core:py3.13-torch2.10.0-rocm7.1.1"
 }
 
 variable "NVIDIA_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/nvidia-full:py3.12-torch2.10.0-cuda13.0.2"
+    default = "ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.10.0-cuda13.0.2"
 }
 
 variable "IMAGE_LABEL" {
@@ -53,4 +53,3 @@ target "sd-webui-forge-neo" {
     cache-from = ["type=registry,ref=${DOCKER_REGISTRY_URL}sd-webui-forge-neo:${notequal("nvidia", BASE_FLAVOR) ? "${BASE_FLAVOR}-" : ""}${IMAGE_LABEL}"]
     cache-to   = ["type=inline"]
 }
-

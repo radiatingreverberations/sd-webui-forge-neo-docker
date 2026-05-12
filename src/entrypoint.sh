@@ -20,8 +20,8 @@ if ! has_flag "--listen" "$@"; then
     set -- --listen "$@"
 fi
 
-if [ "${FORGE_PREPARE_ENVIRONMENT:-0}" != "1" ] && ! has_flag "--skip-prepare-environment" "$@"; then
-    set -- --skip-prepare-environment "$@"
+if ! has_flag "--uv" "$@" && ! has_flag "--uv-symlink" "$@"; then
+    set -- --uv "$@"
 fi
 
 if [ -n "${OFFLOADR_FORCE_CPU:-}" ]; then

@@ -61,7 +61,7 @@ Additional arguments are forwarded to Forge Neo. For example:
 docker run --gpus=all -p 7860:7860 ghcr.io/radiatingreverberations/sd-webui-forge-neo:latest --api
 ```
 
-On container start, the entrypoint activates `/opt/venv` and launches Forge Neo with `--listen`.
+On container start, the entrypoint activates `/opt/venv` and launches Forge Neo with `--listen` and `--uv`.
 
 ## Persistent Storage
 
@@ -75,14 +75,6 @@ Without mounts, files created inside the container are lost when the container i
 |`/sd-webui-forge-neo/cache`|Application cache|
 |`/sd-webui-forge-neo/config.json`|UI settings|
 |`/sd-webui-forge-neo/ui-config.json`|UI layout settings|
-
-## Runtime Preparation
-
-Dependencies are installed at image build time, so the container starts with `--skip-prepare-environment` by default. To allow Forge Neo to run its normal startup preparation, set:
-
-```shell
-docker run --gpus=all -e FORGE_PREPARE_ENVIRONMENT=1 -p 7860:7860 ghcr.io/radiatingreverberations/sd-webui-forge-neo:latest
-```
 
 ## Docker Compose
 
@@ -117,9 +109,9 @@ docker buildx bake
 
 By default local builds consume:
 
-* `ghcr.io/offloadr/base/cpu-core:py3.12-torch2.10.0-cpu`
-* `ghcr.io/offloadr/base/amd-core:py3.12-torch2.10.0-rocm7.1.1`
-* `ghcr.io/offloadr/base/nvidia-full:py3.12-torch2.10.0-cuda13.0.2`
+* `ghcr.io/offloadr/base/cpu-core:py3.13-torch2.10.0-cpu`
+* `ghcr.io/offloadr/base/amd-core:py3.13-torch2.10.0-rocm7.1.1`
+* `ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.10.0-cuda13.0.2`
 
 To override them, pass one or more Bake variables such as `CPU_BASE_IMAGE`, `AMD_BASE_IMAGE`, or `NVIDIA_BASE_IMAGE`.
 
