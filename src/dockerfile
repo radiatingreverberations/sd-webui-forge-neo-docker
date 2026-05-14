@@ -28,7 +28,9 @@ RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharin
         --python "${OFFLOADR_VENV}/bin/python" \
         packaging==26.0 \
         gradio==4.40.0 \
-        gradio_rangeslider==0.0.8 \
+        gradio_rangeslider==0.0.8 && \
+    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
+        --python "${OFFLOADR_VENV}/bin/python" \
         GitPython==3.1.46 \
         Pillow==12.2.0 \
         accelerate==1.13.0 \
