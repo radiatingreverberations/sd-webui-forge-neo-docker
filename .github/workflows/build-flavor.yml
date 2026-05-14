@@ -41,7 +41,7 @@ jobs:
       FORGE_NEO_VERSION: ${{ inputs.forge_neo_ref }}
       BASE_FLAVOR: ${{ inputs.base_flavor }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Build flavor
         uses: ./.github/actions/bake-build
@@ -54,4 +54,3 @@ jobs:
           docker_registry_url: ${{ env.DOCKER_REGISTRY_URL }}
           registry_token: ${{ secrets.GITHUB_TOKEN }}
           extra_set: ${{ inputs.extra_set }}
-
