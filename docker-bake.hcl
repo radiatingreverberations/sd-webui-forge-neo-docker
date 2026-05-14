@@ -11,15 +11,15 @@ variable "REFRESH_FORGE_NEO" {
 }
 
 variable "CPU_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/cpu-core:py3.13-torch2.10.0-cpu"
+    default = "ghcr.io/offloadr/base/cpu-core:py3.13-torch2.11.0-cpu"
 }
 
 variable "AMD_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/amd-core:py3.13-torch2.10.0-rocm7.1.1"
+    default = "ghcr.io/offloadr/base/amd-core:py3.13-torch2.11.0-rocm7.2.3"
 }
 
 variable "NVIDIA_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.10.0-cuda13.0.2"
+    default = "ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.11.0-cuda13.0.3"
 }
 
 variable "IMAGE_LABEL" {

@@ -26,10 +26,10 @@ The upstream Forge Neo repository is checked periodically for updates. These bad
 
 |Tag|Description|
 |---|-----------|
-|`latest`|Latest upstream numeric tag for NVIDIA / CUDA 13.0|
-|`X.Y.Z`|Specific upstream numeric Forge Neo release for NVIDIA / CUDA 13.0|
-|`neo`|Latest commit of the upstream `neo` branch for NVIDIA / CUDA 13.0|
-|`amd-latest` / `amd-neo`|As above, but for AMD / ROCm 7.1.1|
+|`latest`|Latest upstream numeric tag for NVIDIA / CUDA 13.0.3|
+|`X.Y.Z`|Specific upstream numeric Forge Neo release for NVIDIA / CUDA 13.0.3|
+|`neo`|Latest commit of the upstream `neo` branch for NVIDIA / CUDA 13.0.3|
+|`amd-latest` / `amd-neo`|As above, but for AMD / ROCm 7.2.3|
 |`cpu-latest` / `cpu-neo`|As above, but CPU-only|
 |`amd-X.Y.Z` / `cpu-X.Y.Z`|Release-specific tags for AMD / ROCm and CPU images|
 
@@ -109,9 +109,9 @@ docker buildx bake
 
 By default local builds consume:
 
-* `ghcr.io/offloadr/base/cpu-core:py3.13-torch2.10.0-cpu`
-* `ghcr.io/offloadr/base/amd-core:py3.13-torch2.10.0-rocm7.1.1`
-* `ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.10.0-cuda13.0.2`
+* `ghcr.io/offloadr/base/cpu-core:py3.13-torch2.11.0-cpu`
+* `ghcr.io/offloadr/base/amd-core:py3.13-torch2.11.0-rocm7.2.3`
+* `ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.11.0-cuda13.0.3`
 
 To override them, pass one or more Bake variables such as `CPU_BASE_IMAGE`, `AMD_BASE_IMAGE`, or `NVIDIA_BASE_IMAGE`.
 
