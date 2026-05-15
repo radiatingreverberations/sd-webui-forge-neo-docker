@@ -109,6 +109,36 @@ RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharin
         -r requirements.txt \
         -r extensions-builtin/forge_legacy_preprocessors/requirements.txt
 
+# Let Forge perform its own build-time preparation and first UI initialization.
+# The temporary model path keeps build-only model directories out of the app tree.
+RUN set -eu; \
+    test -n "${OFFLOADR_VENV}"; \
+    test -x "${OFFLOADR_VENV}/bin/python"; \
+    "${OFFLOADR_VENV}/bin/python" launch.py --uv --skip-torch-cuda-test --cpu --ui-debug-mode --model-ref /tmp/forge-build-models > /tmp/forge-warmup.log 2>&1 & \
+    pid="$!"; \
+    ready=0; \
+    for _ in $(seq 1 180); do \
+        if grep -Eq "Running on local URL|Startup time:|Application startup complete" /tmp/forge-warmup.log; then \
+            ready=1; \
+            break; \
+        fi; \
+        if ! kill -0 "$pid" 2>/dev/null; then \
+            cat /tmp/forge-warmup.log; \
+            wait "$pid"; \
+            exit 1; \
+        fi; \
+        sleep 1; \
+    done; \
+    cat /tmp/forge-warmup.log; \
+    if [ "$ready" != 1 ]; then \
+        kill "$pid" 2>/dev/null || true; \
+        wait "$pid" 2>/dev/null || true; \
+        exit 1; \
+    fi; \
+    kill "$pid" 2>/dev/null || true; \
+    wait "$pid" 2>/dev/null || true; \
+    rm -rf /tmp/forge-build-models /tmp/forge-warmup.log /tmp/.cache /tmp/uv /tmp/torchinductor
+
 # Forge Neo defaults to port 7860.
 EXPOSE 7860
 
