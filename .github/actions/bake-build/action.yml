@@ -29,6 +29,10 @@ inputs:
     description: "Token/password for authenticating to the container registry"
     required: false
     default: ""
+  github_token:
+    description: "GitHub token for authenticated GitHub API requests"
+    required: false
+    default: ""
 
 runs:
   using: "composite"
@@ -64,6 +68,16 @@ runs:
         sha=$(bash "${{ github.action_path }}/../../scripts/resolve-forge-neo-sha.sh" "${{ inputs.forge_neo_ref }}")
         printf 'sha=%s\n' "$sha" >>"$GITHUB_OUTPUT"
 
+    - name: Fetch Forge Neo metadata
+      id: forge_neo_metadata
+      shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github_token }}
+      run: |
+        bash "${{ github.action_path }}/../../scripts/resolve-forge-neo-metadata.sh" \
+          "${{ inputs.forge_neo_ref }}" \
+          "${{ steps.forge_neo_ref.outputs.sha }}" >>"$GITHUB_OUTPUT"
+
     - name: Normalize targets list
       id: targets
       shell: bash
@@ -81,5 +95,6 @@ runs:
           *.args.REFRESH_FORGE_NEO=${{ steps.forge_neo_ref.outputs.sha }}
           *.labels.forge-neo.ref=${{ inputs.forge_neo_ref }}
           *.labels.forge-neo.sha=${{ steps.forge_neo_ref.outputs.sha }}
+          ${{ steps.forge_neo_metadata.outputs.bake_set }}
           ${{ inputs.extra_set }}
         targets: ${{ steps.targets.outputs.list }}
