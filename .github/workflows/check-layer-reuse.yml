@@ -1,6 +1,13 @@
 name: Check source-only layer reuse
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "docker-bake.hcl"
+      - "tests/check_layer_reuse.py"
+      - ".github/workflows/check-layer-reuse.yml"
   workflow_dispatch:
     inputs:
       before:
@@ -41,8 +48,9 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Compare image layers
+        # These immutable fixtures differ only in source, with identical requirements.
         env:
-          BEFORE_SHA: ${{ inputs.before }}
-          AFTER_SHA: ${{ inputs.after }}
-          BASE_FLAVOR: ${{ inputs.base_flavor }}
+          BEFORE_SHA: ${{ inputs.before || '58700b99e03c022ec1ae158bee18f939731f9322' }}
+          AFTER_SHA: ${{ inputs.after || 'ede60e1aefd30ce0f7341c8ff538f48e0fd047c9' }}
+          BASE_FLAVOR: ${{ inputs.base_flavor || 'nvidia' }}
         run: python3 tests/check_layer_reuse.py "$BEFORE_SHA" "$AFTER_SHA" --flavor "$BASE_FLAVOR"
