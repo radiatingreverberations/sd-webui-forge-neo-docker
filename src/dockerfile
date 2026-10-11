@@ -16,6 +16,11 @@ FROM ${BASE_IMAGE} AS runtime-files
 COPY --chmod=755 runtime-venv.sh entrypoint.sh warmup.sh /runtime/
 RUN sed -i 's/\r$//' /runtime/*
 
+FROM ${BASE_IMAGE} AS forge-assets
+COPY --from=forge-source /sd-webui-forge-neo/backend/huggingface/ /sd-webui-forge-neo/backend/huggingface/
+RUN PYTHONDONTWRITEBYTECODE=1 "${OFFLOADR_VENV}/bin/python" -c \
+    'import runpy; runpy.run_path("/sd-webui-forge-neo/backend/huggingface/__init__.py")["process"]()'
+
 FROM ${BASE_IMAGE} AS forge-dependencies
 WORKDIR /sd-webui-forge-neo
 
@@ -49,7 +54,7 @@ RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharin
 
 # Bundled tokenizers are much larger than the application code and have their
 # own content-based cache, independent of changes elsewhere in the source tree.
-COPY --link --from=forge-source /sd-webui-forge-neo/backend/huggingface/ /sd-webui-forge-neo/backend/huggingface/
+COPY --link --from=forge-assets /sd-webui-forge-neo/backend/huggingface/ /sd-webui-forge-neo/backend/huggingface/
 
 EXPOSE 7860
 ENV PYTHONUNBUFFERED=1
