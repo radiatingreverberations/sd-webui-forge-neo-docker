@@ -41,6 +41,9 @@ def image_tag(target: str, variant: str) -> str:
 def build(ref: str, variant: str, flavor: str) -> dict[str, list[str]]:
     command = [
         "docker", "buildx", "bake", "--progress=plain", "--load",
+        # A concurrently published registry cache can replace valid local cache
+        # entries with a different build's timestamps. Compare one local cache.
+        "--set", "*.cache-from=",
         "--set", f"*.args.FORGE_NEO_VERSION={ref}",
         "--set", f"*.args.REFRESH_FORGE_NEO={ref}",
         "--set", f"*.labels.forge-neo.sha={ref}",
