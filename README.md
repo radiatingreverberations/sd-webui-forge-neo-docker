@@ -115,10 +115,10 @@ By default local builds consume:
 
 To override them, pass one or more Bake variables such as `CPU_BASE_IMAGE`, `AMD_BASE_IMAGE`, or `NVIDIA_BASE_IMAGE`.
 
-Dependencies are installed before application source. Updates that leave the
-upstream requirements unchanged reuse the dependency layers; only the final
-application layer changes. Source archives and temporary build caches are kept
-out of the published image.
+Dependencies and bundled tokenizer assets have separate layers. Updates that
+leave these inputs unchanged reuse those layers; only the final application
+layer changes. Source archives and temporary build caches are kept out of the
+published image.
 
 Every build checks that the UI starts and responds over HTTP without a model or
 GPU. The check uses a read-only venv and includes generated startup settings in
@@ -128,8 +128,8 @@ CI builds the resolved upstream commit SHA, matching the `forge-neo.sha` image
 label.
 
 The **Check source-only layer reuse** GitHub Actions workflow builds two upstream
-commits with identical requirements and verifies that only the final layer
-changes. To run the same check locally:
+commits with identical requirements and bundled tokenizer assets, and verifies
+that only the final layer changes. To run the same check locally:
 
 ```shell
 python tests/check_layer_reuse.py <before-sha> <after-sha> --flavor nvidia

@@ -47,6 +47,10 @@ RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharin
         -r /opt/offloadr/forge-requirements.extra.txt \
         "${DEPTH_ANYTHING_WHEEL}" "${DEPTH_ANYTHING_V2_WHEEL}"
 
+# Bundled tokenizers are much larger than the application code and have their
+# own content-based cache, independent of changes elsewhere in the source tree.
+COPY --link --from=forge-source /sd-webui-forge-neo/backend/huggingface/ /sd-webui-forge-neo/backend/huggingface/
+
 EXPOSE 7860
 ENV PYTHONUNBUFFERED=1
 ENV GRADIO_ANALYTICS_ENABLED=False
@@ -57,8 +61,9 @@ ENTRYPOINT ["./entrypoint.sh"]
 # Preserve first-startup artifacts while making venv changes impossible. All
 # installation happens in forge-dependencies; warmup only prepares the app tree.
 FROM forge-dependencies AS forge-prepared
-COPY --link --from=forge-source /sd-webui-forge-neo/ /sd-webui-forge-neo/
+COPY --link --from=forge-source --exclude=backend/huggingface /sd-webui-forge-neo/ /sd-webui-forge-neo/
 RUN --mount=type=bind,from=forge-dependencies,source=/opt/venv,target=/opt/venv \
+    --mount=type=bind,from=forge-dependencies,source=/sd-webui-forge-neo/backend/huggingface,target=/sd-webui-forge-neo/backend/huggingface \
     --mount=type=bind,from=runtime-files,source=/runtime/warmup.sh,target=/tmp/forge-warmup.sh \
     PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/forge-uv-cache sh /tmp/forge-warmup.sh
 
@@ -67,5 +72,6 @@ FROM forge-dependencies AS sd-webui-forge-neo
 COPY --link --from=forge-prepared \
     --exclude=requirements.txt \
     --exclude=extensions-builtin/forge_legacy_preprocessors/requirements.txt \
+    --exclude=backend/huggingface \
     --exclude=runtime-venv.sh --exclude=entrypoint.sh \
     /sd-webui-forge-neo/ /sd-webui-forge-neo/

@@ -15,7 +15,7 @@ on:
         type: string
         required: true
       after:
-        description: "Full upstream commit SHA after the change (same requirements)"
+        description: "Full upstream commit SHA after the change (same requirements and tokenizers)"
         type: string
         required: true
       base_flavor:
@@ -48,7 +48,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Compare image layers
-        # These immutable fixtures differ only in source, with identical requirements.
+        # These immutable fixtures differ only in code, with identical requirements and tokenizers.
         env:
           BEFORE_SHA: ${{ inputs.before || '58700b99e03c022ec1ae158bee18f939731f9322' }}
           AFTER_SHA: ${{ inputs.after || 'ede60e1aefd30ce0f7341c8ff538f48e0fd047c9' }}

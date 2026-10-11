@@ -1,7 +1,8 @@
 """Build two source revisions and verify that only the source layer changes.
 
 Requires Docker Buildx and registry access. Builds local images without pushing.
-Both commits must have identical requirements, but different application files.
+Both commits must have identical requirements and bundled tokenizer assets,
+but different application code.
 Test images are removed afterwards unless --keep-images is specified.
 """
 
