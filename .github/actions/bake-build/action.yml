@@ -92,6 +92,7 @@ runs:
       with:
         push: ${{ inputs.push == 'true' }}
         set: |
+          *.args.FORGE_NEO_VERSION=${{ steps.forge_neo_ref.outputs.sha }}
           *.args.REFRESH_FORGE_NEO=${{ steps.forge_neo_ref.outputs.sha }}
           *.labels.forge-neo.ref=${{ inputs.forge_neo_ref }}
           *.labels.forge-neo.sha=${{ steps.forge_neo_ref.outputs.sha }}

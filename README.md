@@ -111,9 +111,43 @@ By default local builds consume:
 
 * `ghcr.io/offloadr/base/cpu-core:py3.13-torch2.11.0-cpu`
 * `ghcr.io/offloadr/base/amd-core:py3.13-torch2.11.0-rocm7.2.3`
-* `ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.11.0-cuda13.0.3`
+* `ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.14.1-cuda13.0.3`
 
 To override them, pass one or more Bake variables such as `CPU_BASE_IMAGE`, `AMD_BASE_IMAGE`, or `NVIDIA_BASE_IMAGE`.
+
+Dependencies are installed before application source. Updates that leave the
+upstream requirements unchanged reuse the dependency layers; only the final
+application layer changes. Source archives and temporary build caches are kept
+out of the published image.
+
+Every build checks that the UI starts and responds over HTTP without a model or
+GPU. The check uses a read-only venv and includes generated startup settings in
+the application layer. GPU inference requires a separate runtime check.
+
+CI builds the resolved upstream commit SHA, matching the `forge-neo.sha` image
+label.
+
+The **Check source-only layer reuse** GitHub Actions workflow builds two upstream
+commits with identical requirements and verifies that only the final layer
+changes. To run the same check locally:
+
+```shell
+python tests/check_layer_reuse.py <before-sha> <after-sha> --flavor nvidia
+```
+
+Test images are removed afterwards; Docker's build cache remains available for
+reuse.
+
+## NVIDIA Runtime
+
+NVIDIA images use Python 3.13, PyTorch 2.14.1 and CUDA 13.0.3, with xFormers and
+SageAttention2++. CPU and AMD images use PyTorch 2.11.0.
+
+The host supplies the NVIDIA driver. On Vast.ai, QuickPod, RunPod, Shadeform and
+similar services, select a host advertising CUDA 13.0 or newer (driver branch
+R580 or newer). Its installed CUDA Toolkit does not need to match the container.
+See [NVIDIA's compatibility documentation](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html)
+for driver requirements and PTX/JIT limitations.
 
 ## Image Details
 

@@ -19,7 +19,7 @@ variable "AMD_BASE_IMAGE" {
 }
 
 variable "NVIDIA_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.11.0-cuda13.0.3"
+    default = "ghcr.io/offloadr/base/nvidia-full:py3.13-torch2.14.1-cuda13.0.3"
 }
 
 variable "IMAGE_LABEL" {

@@ -1,155 +1,71 @@
+# syntax=docker/dockerfile:1
+
 ARG BASE_IMAGE=ghcr.io/offloadr/base/cpu-core:py3.13-torch2.11.0-cpu
-FROM ${BASE_IMAGE}
 
-WORKDIR /sd-webui-forge-neo
-
-# Runtime tools and shared libraries used by Forge Neo, OpenCV, and media export.
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    ffmpeg \
-    git \
-    libcairo2-dev \
-    libgl1 \
-    libglib2.0-0 \
-    pkg-config \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install source-independent application dependencies before the moving Forge Neo
-# source so upstream-only updates do not force clients to pull this venv layer.
-# The second install snapshots currently unpinned legacy preprocessor deps. This
-# mirrors a manually updated source tree: already-installed compatible packages
-# stay put unless upstream starts requiring a different version.
-ARG DEPTH_ANYTHING_WHEEL=https://github.com/huchenlei/Depth-Anything/releases/download/v1.0.0/depth_anything-2024.1.22.0-py2.py3-none-any.whl
-ARG DEPTH_ANYTHING_V2_WHEEL=https://github.com/MackinationsAi/UDAV2-ControlNet/releases/download/v1.0.0/depth_anything_v2-2024.7.1.0-py2.py3-none-any.whl
-RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharing=locked \
-    test -n "${OFFLOADR_VENV}" && \
-    test -x "${OFFLOADR_VENV}/bin/python" && \
-    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
-        --python "${OFFLOADR_VENV}/bin/python" \
-        packaging==26.0 \
-        gradio==4.40.0 \
-        gradio_rangeslider==0.0.8 && \
-    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
-        --python "${OFFLOADR_VENV}/bin/python" \
-        GitPython==3.1.46 \
-        Pillow==12.2.0 \
-        accelerate==1.13.0 \
-        'audioop-lts==0.2.2;python_version>="3.13"' \
-        av==17.0.0 \
-        comfy-kitchen==0.2.8 \
-        diffusers==0.37.1 \
-        diskcache==5.6.3 \
-        einops==0.8.2 \
-        facexlib==0.3.0 \
-        fastapi==0.127.1 \
-        httpx==0.24.1 \
-        huggingface-hub==0.36.2 \
-        inflection==0.5.1 \
-        joblib==1.5.3 \
-        kornia==0.6.12 \
-        lark==1.2.2 \
-        numpy==2.3.5 \
-        omegaconf==2.2.3 \
-        opencv-python==4.10.0.84 \
-        peft==0.17.1 \
-        piexif==1.1.3 \
-        pillow-heif==1.3.0 \
-        pillow-jxl-plugin==1.3.7 \
-        protobuf==4.25.9 \
-        psutil==6.1.1 \
-        pydantic-core==2.27.2 \
-        pydantic==2.10.6 \
-        pyyaml==6.0.3 \
-        rich==14.3.3 \
-        safetensors==0.7.0 \
-        scikit-image==0.25.2 \
-        setuptools==69.5.1 \
-        spandrel-extra-arches==0.2.0 \
-        spandrel==0.4.2 \
-        tomesd==0.1.3 \
-        torchdiffeq==0.2.5 \
-        torchsde==0.2.6 \
-        tqdm==4.67.3 \
-        transformers==4.56.2 && \
-    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
-        --python "${OFFLOADR_VENV}/bin/python" \
-        addict==2.4.0 \
-        ftfy==6.3.1 \
-        fvcore==0.1.5.post20221221 \
-        mediapipe==0.10.35 \
-        onnx==1.21.0 \
-        onnxruntime==1.26.0 \
-        svglib==1.6.0 \
-        timm==1.0.27 \
-        yapf==0.43.0 && \
-    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
-        --python "${OFFLOADR_VENV}/bin/python" \
-        insightface \
-        "${DEPTH_ANYTHING_WHEEL}" \
-        "${DEPTH_ANYTHING_V2_WHEEL}" && \
-    chmod -R u=rwX,go=rX "${OFFLOADR_VENV}"
-
-# Allow cache invalidation of the moving upstream branch even when the ref name is unchanged.
+# The archive is a build input, separate from the published runtime layers.
+FROM ${BASE_IMAGE} AS forge-source
 ARG REFRESH_FORGE_NEO=0
 RUN echo "${REFRESH_FORGE_NEO}" >/tmp/forge-neo-refresh
-
-# Install Forge Neo.
 ARG FORGE_NEO_VERSION=neo
 ADD https://github.com/Haoming02/sd-webui-forge-classic/archive/${FORGE_NEO_VERSION}.tar.gz /tmp/forge-neo.tar.gz
 RUN mkdir -p /sd-webui-forge-neo && \
     tar -xzf /tmp/forge-neo.tar.gz -C /sd-webui-forge-neo --strip-components=1 && \
-    rm -f /tmp/forge-neo.tar.gz
+    rm /tmp/forge-neo.tar.gz
 
-# Install dependencies declared by the Forge Neo source into the baked application venv.
+FROM ${BASE_IMAGE} AS runtime-files
+COPY --chmod=755 runtime-venv.sh entrypoint.sh warmup.sh /runtime/
+RUN sed -i 's/\r$//' /runtime/*
+
+FROM ${BASE_IMAGE} AS forge-dependencies
+WORKDIR /sd-webui-forge-neo
+
+# Runtime tools and shared libraries used by Forge Neo and its preprocessors.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        ffmpeg git libcairo2-dev libgl1 libglib2.0-0 pkg-config && \
+    rm -rf /var/lib/apt/lists/*
+
+# Only dependency inputs cross from the upstream source stage. COPY compares
+# their contents, so source-only changes reuse the installed venv layer.
+COPY --from=forge-source /sd-webui-forge-neo/requirements.txt requirements.txt
+COPY --from=forge-source /sd-webui-forge-neo/extensions-builtin/forge_legacy_preprocessors/requirements.txt extensions-builtin/forge_legacy_preprocessors/requirements.txt
+COPY requirements.extra.txt /opt/offloadr/forge-requirements.extra.txt
+ARG DEPTH_ANYTHING_WHEEL=https://github.com/huchenlei/Depth-Anything/releases/download/v1.0.0/depth_anything-2024.1.22.0-py2.py3-none-any.whl
+ARG DEPTH_ANYTHING_V2_WHEEL=https://github.com/MackinationsAi/UDAV2-ControlNet/releases/download/v1.0.0/depth_anything_v2-2024.7.1.0-py2.py3-none-any.whl
+# Forge's Pillow pin exceeds Gradio's declared upper bound. Apply the launcher
+# dependencies first, then Forge's requirements within the same image layer.
 RUN --mount=type=cache,id=forge-neo-uv-build,target=/root/.cache/uv-build,sharing=locked \
     test -n "${OFFLOADR_VENV}" && \
     test -x "${OFFLOADR_VENV}/bin/python" && \
     UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
         --python "${OFFLOADR_VENV}/bin/python" \
+        packaging==26.2 gradio==4.40.0 gradio_rangeslider==0.0.8 && \
+    UV_CACHE_DIR=/root/.cache/uv-build uv pip install \
+        --python "${OFFLOADR_VENV}/bin/python" \
         -r requirements.txt \
-        -r extensions-builtin/forge_legacy_preprocessors/requirements.txt
+        -r extensions-builtin/forge_legacy_preprocessors/requirements.txt \
+        -r /opt/offloadr/forge-requirements.extra.txt \
+        "${DEPTH_ANYTHING_WHEEL}" "${DEPTH_ANYTHING_V2_WHEEL}"
 
-# Let Forge perform its own build-time preparation and first UI initialization.
-# The temporary model path keeps build-only model directories out of the app tree.
-RUN set -eu; \
-    test -n "${OFFLOADR_VENV}"; \
-    test -x "${OFFLOADR_VENV}/bin/python"; \
-    "${OFFLOADR_VENV}/bin/python" launch.py --uv --skip-torch-cuda-test --cpu --ui-debug-mode --model-ref /tmp/forge-build-models > /tmp/forge-warmup.log 2>&1 & \
-    pid="$!"; \
-    ready=0; \
-    for _ in $(seq 1 180); do \
-        if grep -Eq "Running on local URL|Startup time:|Application startup complete" /tmp/forge-warmup.log; then \
-            ready=1; \
-            break; \
-        fi; \
-        if ! kill -0 "$pid" 2>/dev/null; then \
-            cat /tmp/forge-warmup.log; \
-            wait "$pid"; \
-            exit 1; \
-        fi; \
-        sleep 1; \
-    done; \
-    cat /tmp/forge-warmup.log; \
-    if [ "$ready" != 1 ]; then \
-        kill "$pid" 2>/dev/null || true; \
-        wait "$pid" 2>/dev/null || true; \
-        exit 1; \
-    fi; \
-    kill "$pid" 2>/dev/null || true; \
-    wait "$pid" 2>/dev/null || true; \
-    rm -rf /tmp/forge-build-models /tmp/forge-warmup.log /tmp/.cache /tmp/uv /tmp/torchinductor
-
-# Forge Neo defaults to port 7860.
 EXPOSE 7860
-
 ENV PYTHONUNBUFFERED=1
 ENV GRADIO_ANALYTICS_ENABLED=False
 ENV XFORMERS_IGNORE_FLASH_VERSION_CHECK=1
-
-COPY runtime-venv.sh runtime-venv.sh
-RUN sed -i 's/\r$//' runtime-venv.sh && chmod +x runtime-venv.sh
-
-COPY entrypoint.sh entrypoint.sh
-RUN sed -i 's/\r$//' entrypoint.sh && chmod +x entrypoint.sh
-
+COPY --link --from=runtime-files /runtime/runtime-venv.sh /runtime/entrypoint.sh /sd-webui-forge-neo/
 ENTRYPOINT ["./entrypoint.sh"]
+
+# Preserve first-startup artifacts while making venv changes impossible. All
+# installation happens in forge-dependencies; warmup only prepares the app tree.
+FROM forge-dependencies AS forge-prepared
+COPY --link --from=forge-source /sd-webui-forge-neo/ /sd-webui-forge-neo/
+RUN --mount=type=bind,from=forge-dependencies,source=/opt/venv,target=/opt/venv \
+    --mount=type=bind,from=runtime-files,source=/runtime/warmup.sh,target=/tmp/forge-warmup.sh \
+    PYTHONDONTWRITEBYTECODE=1 UV_CACHE_DIR=/tmp/forge-uv-cache sh /tmp/forge-warmup.sh
+
+# Application source and generated startup artifacts form the final layer.
+FROM forge-dependencies AS sd-webui-forge-neo
+COPY --link --from=forge-prepared \
+    --exclude=requirements.txt \
+    --exclude=extensions-builtin/forge_legacy_preprocessors/requirements.txt \
+    --exclude=runtime-venv.sh --exclude=entrypoint.sh \
+    /sd-webui-forge-neo/ /sd-webui-forge-neo/
