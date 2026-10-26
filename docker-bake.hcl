@@ -11,11 +11,11 @@ variable "REFRESH_FORGE_NEO" {
 }
 
 variable "CPU_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/cpu-core:py3.13-torch2.11.0-cpu"
+    default = "ghcr.io/offloadr/base/cpu-core:py3.13-torch2.14.1-cpu"
 }
 
 variable "AMD_BASE_IMAGE" {
-    default = "ghcr.io/offloadr/base/amd-core:py3.13-torch2.11.0-rocm7.2.3"
+    default = "ghcr.io/offloadr/base/amd-core:py3.13-torch2.14.1-rocm7.2.4"
 }
 
 variable "NVIDIA_BASE_IMAGE" {
@@ -43,6 +43,7 @@ group "default" {
 target "sd-webui-forge-neo" {
     context    = "src"
     dockerfile = "dockerfile"
+    pull       = true
     args = {
         FORGE_NEO_VERSION = "${FORGE_NEO_VERSION}"
         REFRESH_FORGE_NEO = "${REFRESH_FORGE_NEO}"
