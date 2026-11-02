@@ -22,6 +22,11 @@ The upstream Forge Neo repository is checked periodically for updates. These bad
 |-----|-----------|
 |`sd-webui-forge-neo`|Forge Neo with application dependencies and built-in preprocessor dependencies installed at image build time|
 
+The image is published as `ghcr.io/offloadr/sd-webui-forge-neo`.
+
+> The image moved here from `ghcr.io/radiatingreverberations`. The old name still receives
+> every update for now, but new setups should use `ghcr.io/offloadr`.
+
 ## Available Tags
 
 |Tag|Description|
@@ -40,25 +45,25 @@ Release-specific tags track the current image for that upstream Forge Neo releas
 ### NVIDIA
 
 ```shell
-docker run --gpus=all -p 7860:7860 ghcr.io/radiatingreverberations/sd-webui-forge-neo:latest
+docker run --gpus=all -p 7860:7860 ghcr.io/offloadr/sd-webui-forge-neo:latest
 ```
 
 ### AMD
 
 ```shell
-docker run --device=/dev/kfd --device=/dev/dri -p 7860:7860 ghcr.io/radiatingreverberations/sd-webui-forge-neo:amd-latest
+docker run --device=/dev/kfd --device=/dev/dri -p 7860:7860 ghcr.io/offloadr/sd-webui-forge-neo:amd-latest
 ```
 
 ### CPU
 
 ```shell
-docker run -p 7860:7860 ghcr.io/radiatingreverberations/sd-webui-forge-neo:cpu-latest
+docker run -p 7860:7860 ghcr.io/offloadr/sd-webui-forge-neo:cpu-latest
 ```
 
 Additional arguments are forwarded to Forge Neo. For example:
 
 ```shell
-docker run --gpus=all -p 7860:7860 ghcr.io/radiatingreverberations/sd-webui-forge-neo:latest --api
+docker run --gpus=all -p 7860:7860 ghcr.io/offloadr/sd-webui-forge-neo:latest --api
 ```
 
 On container start, the entrypoint activates `/opt/venv` and launches Forge Neo with `--listen` and `--uv`.
@@ -81,7 +86,7 @@ Without mounts, files created inside the container are lost when the container i
 ```yaml
 services:
   forge-neo:
-    image: ghcr.io/radiatingreverberations/sd-webui-forge-neo:latest
+    image: ghcr.io/offloadr/sd-webui-forge-neo:latest
     ports:
       - "7860:7860"
     volumes:

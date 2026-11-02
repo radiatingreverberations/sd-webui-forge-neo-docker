@@ -96,6 +96,7 @@ runs:
           *.args.REFRESH_FORGE_NEO=${{ steps.forge_neo_ref.outputs.sha }}
           *.labels.forge-neo.ref=${{ inputs.forge_neo_ref }}
           *.labels.forge-neo.sha=${{ steps.forge_neo_ref.outputs.sha }}
+          *.labels.org.opencontainers.image.source=https://github.com/${{ github.repository }}
           ${{ steps.forge_neo_metadata.outputs.bake_set }}
           ${{ inputs.extra_set }}
         targets: ${{ steps.targets.outputs.list }}
