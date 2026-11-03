@@ -5,8 +5,7 @@ on:
   workflow_run:
     workflows:
       - "Trigger builds on new commits to main"
-      - "Rebuild on Forge Neo branch changes"
-      - "Rebuild on Forge Neo latest tag changes"
+      - "Build a channel"
     types: [completed]
 
 permissions:
